@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const app = express();
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -14,6 +15,16 @@ app.get('/api/vcard', (req, res) => {
   const region = "AB";
   const country = "Canada";
 
+  let photoLine = "";
+  try {
+    const photoPath = path.join(__dirname, 'public', 'photo.jpg');
+    const photoData = fs.readFileSync(photoPath).toString('base64');
+    const folded = photoData.replace(/(.{74})/g, '$1\r\n ');
+    photoLine = `PHOTO;ENCODING=b;TYPE=JPEG:${folded}`;
+  } catch (e) {
+    console.error('Photo not found, skipping PHOTO field:', e.message);
+  }
+
   const vcard = [
     "BEGIN:VCARD",
     "VERSION:3.0",
@@ -24,8 +35,9 @@ app.get('/api/vcard', (req, res) => {
     `EMAIL:${email}`,
     `ADR;TYPE=WORK:;;;${city};${region};;${country}`,
     `URL;TYPE=LinkedIn:${linkedin}`,
+    photoLine,
     "END:VCARD"
-  ].join("\r\n");
+  ].filter(Boolean).join("\r\n");
 
   res.set({
     "Content-Type": "text/vcard; charset=utf-8",
